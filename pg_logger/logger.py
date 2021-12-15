@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Iterable
 from sqlalchemy.engine import Engine
+from googleads.errors import AdWordsReportError
 
 import pandas as pd
 import json
@@ -22,8 +23,20 @@ class PgLogger:
         self.engine = engine
         self.table_name = table_name
 
-    def write_log(self, request_params: str, status: int, request_url: str, code: int, message: str, service_name: str, json: dict) -> None:
+    def write_log(self, status: int, request_url: str, request_params: str = None, code: int = None, message: str = None, json: dict = None) -> None:
         kwargs = locals()
+        kwargs['service_name'] = self.app
         del kwargs['self']
+
         pd.DataFrame(kwargs).to_sql(self.table_name, self.engine)
-        
+
+
+def logfunction(func):
+    def decorator(logger: PgLogger):
+        def wrapper(*args, **kwargs):
+            try:
+                func(*args, **kwargs)
+            except AdWordsReportError as e:
+                logger.write_log(status=LogStatus.FAIL, request_url='https://google.com/adwords/api', message=)
+            else:
+                logger.write_log(status=LogStatus.SUCCESS, request_url='https://google.com/adwords/api', )
