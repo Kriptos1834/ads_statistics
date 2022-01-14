@@ -3,40 +3,24 @@ from typing import Iterable
 from datetime import datetime
 from io import StringIO
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sys import exit
-from utils import convert_date, date_validation, exclude_duplicates
+from utils.utils import date_validation, exclude_duplicates
+from ga_utils import convert_date
+from config import RENAME_COLUMNS, VERSION
 
 import pandas as pd
 import traceback
 import argparse
-import sqlalchemy
 
-RENAME_COLUMNS = {
-    'Cost': 'spends',
-    'Day': 'dt',
-    'Criteria Id': 'criteria_id',
-    'Ad ID': 'ad_id',
-    'Business name': 'ad_name',
-    'Ad type': 'ad_type',
-    'Final URL': 'url',
-    'Campaign ID': 'campaign_id',
-    'Campaign': 'campaign_name',
-    'Campaign Trial Type': 'campaign_type',
-    'Campaign state': 'camapign_status',
-    'Impressions': 'impressions',
-    'Clicks': 'clicks',
-    'Currency': 'currency',
 
-}
-
-version = 'v201809'
 
 
 def get_report(client: AdWordsClient, report_type: str, columns: Iterable['str'], date_from: str, date_to: str = datetime.today()) -> pd.DataFrame:
     try:
         output = StringIO()
         date_range = convert_date(date_from) + ',' + convert_date(date_to)
-        report_downloader = client.GetReportDownloader(version=version)
+        report_downloader = client.GetReportDownloader(version=VERSION)
 
         report_query = (ReportQueryBuilder().Select(*columns)
                         .From(report_type)
@@ -46,7 +30,6 @@ def get_report(client: AdWordsClient, report_type: str, columns: Iterable['str']
         report_downloader.DownloadReportWithAwql(
             report_query, 'CSV', output, skip_report_header=True,
             skip_column_header=False, skip_report_summary=True,
-            # include_zero_impressions=False
         )
         output.seek(0)
 
@@ -105,7 +88,7 @@ def get_critetia_performance_report(client: AdWordsClient, date_from: datetime, 
     df_report.rename(columns=RENAME_COLUMNS, errors='ignore', inplace=True)
     return(df_report)
 
-def main(client: AdWordsClient, date_from: datetime, date_to: datetime, engine: sqlalchemy.engine.Engine) -> None:
+def main(client: AdWordsClient, date_from: datetime, date_to: datetime, engine: Engine) -> None:
 
     df_campaign_performance_report = get_campaign_performance_report(client=client, date_from=date_from, date_to=date_to)
     df_campaign_statistic = exclude_duplicates(get_campaign_statistic(client=client, date_from=date_from, date_to=date_to),
