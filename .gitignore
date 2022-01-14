@@ -1,4 +1,5 @@
 venv
 pgdata
 docker-compose.yml
-google_adwords/adwords.ipynb
+get_stat/google_adwords/adwords.ipynb
+get_stat/facebook_ads/facebook_api.ipynb
