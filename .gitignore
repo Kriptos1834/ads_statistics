@@ -1,5 +1,7 @@
 venv
+__pycache__/
 pgdata
 docker-compose.yml
 get_stat/google_adwords/adwords.ipynb
 get_stat/facebook_ads/facebook_api.ipynb
+get_stat/fecebook_ads/credentials.json

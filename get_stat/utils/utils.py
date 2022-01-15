@@ -15,6 +15,10 @@ def date_validation(date_text: str):
         raise Exception('\n *** Function (date_validation) Failed ***')
 
 def exclude_duplicates(df: pd.DataFrame, exclude: pd.DataFrame) -> pd.DataFrame:
+    # convert columns data types
+    for column in df.columns:
+        df[column] = df[column].astype(exclude[column].dtypes.name)
+
     df_combined = pd.merge(df, exclude, on=list(
         df.columns), how='outer', indicator=True)
     return df_combined.loc[df_combined._merge == 'left_only'].drop(columns=['_merge', 'source', 'created_at'])

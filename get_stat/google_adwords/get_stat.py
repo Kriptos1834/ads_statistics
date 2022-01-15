@@ -12,7 +12,8 @@ import pandas as pd
 import traceback
 import argparse
 
-path.append('../')
+import os
+path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', )))
 from utils.utils import exclude_duplicates, date_validation
 
 
