@@ -11,6 +11,7 @@ from config import RENAME_COLUMNS, VERSION
 import pandas as pd
 import traceback
 import argparse
+import json
 
 import os
 path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', )))
@@ -109,25 +110,23 @@ if __name__ == '__main__':
     parser.add_argument('-dt', '--date_to', type=str, metavar='', help='Date collect stats to. Default: yesterday date',
                         default=datetime.strftime(datetime.today()-timedelta(days=1), '%Y-%m-%d'))
 
-    parser.add_argument('-e', '--engine', type=str, metavar='', required=True,
-                        help='Database engine string. Postgres engine string format: ' \
-                            'postgresql+psycopg2://<pg user>:<password>@<host>:<port>/<base name>')
-
-    # parser.add_argument('--pg_host', type=str, metavar='',
-    #                     help='Postgres base host.', required=True)
-    # parser.add_argument('--pg_port', type=str, metavar='',
-    #                     help='Postgres base port.', required=True)
-    # parser.add_argument('--db_name', type=str, metavar='',
-    #                     help='Database name. Default: "ads_stats".', default='ads_stats')
-    # parser.add_argument('--pg_user', type=str, metavar='',
-    #                     help='Postgres user.', required=True)
-    # parser.add_argument('--pg_password', type=str, metavar='',
-    #                     help='Postgres password.', required=True)
+    parser.add_argument('-db', '--database', type=str, metavar='', required=True,
+                    help='path to JSON file with base config.\nSchema:' +
+                    '\nhost - <string> base host.' +
+                    '\nport - <string> base port.' +
+                    '\nbase_name - <string> base name.' +
+                    '\nuser - <string> base user.' + 
+                    '\nuser - <string> user password.')
 
     args = parser.parse_args()
 
     # Get engine and check it connection
-    engine = create_engine(args.engine)
+    with open(args.database, 'r') as f:
+        database = json.loads(f.read())        
+    try:
+        engine = create_engine(f'postgresql+psycopg2://{database["user"]}:{database["password"]}@{database["host"]}:{database["port"]}/{database["base_name"]}')
+    except KeyError:
+        raise ValueError('databse config file is missing reqired arguments, use -h to show JSON schema')
     with engine.connect() as connection:
         pass
 
