@@ -1,0 +1,7 @@
+{
+    "host": "localhost",
+    "port": "5431",
+    "base_name": "ads_statistics",
+    "user": "postgres",
+    "password": "password!1"
+}
