@@ -6,3 +6,5 @@ REQUIRED_CREDENTIALS = {
     'access_token': '<string> (Facebook user access token.)',
     'account_id': '<string> (Facebook ad account ID. WARNING! format: "act_<id>")',
 }
+
+SOURCE = 'fb_marketing'

@@ -9,11 +9,13 @@ RENAME_COLUMNS = {
     'Campaign ID': 'campaign_id',
     'Campaign': 'campaign_name',
     'Campaign Trial Type': 'campaign_type',
-    'Campaign state': 'camapign_status',
+    'Campaign state': 'campaign_status',
     'Impressions': 'impressions',
     'Clicks': 'clicks',
     'Currency': 'currency',
 
 }
+
+SOURCE = 'adwords'
 
 VERSION = 'v201809'

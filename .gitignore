@@ -4,4 +4,7 @@ pgdata
 docker-compose.yml
 get_stat/google_adwords/adwords.ipynb
 get_stat/facebook_ads/facebook_api.ipynb
-get_stat/fecebook_ads/credentials.json
+credentials.json
+db.json
+pg_logger
+volumes/pg_data

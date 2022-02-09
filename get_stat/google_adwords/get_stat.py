@@ -6,16 +6,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sys import exit, path
 from ga_utils import convert_date
-from config import RENAME_COLUMNS, VERSION
+from alive_progress import alive_bar
+from config import RENAME_COLUMNS, VERSION, SOURCE
 
 import pandas as pd
 import traceback
 import argparse
 import json
-
 import os
+
 path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', )))
-from utils.utils import exclude_duplicates, date_validation
+from utils.utils import exclude_duplicates, date_validation, get_pg_engine_from_env, check_engine_connection
 
 
 
@@ -87,16 +88,24 @@ def get_critetia_performance_report(client: AdWordsClient, date_from: datetime, 
     return(df_report)
 
 def main(client: AdWordsClient, date_from: datetime, date_to: datetime, engine: Engine) -> None:
+    print(f'Loading google adwords stat ({date_from} - {date_to}).', end=' ')
+    with alive_bar(6) as pbar:
+        df_campaign_performance_report = exclude_duplicates(get_campaign_performance_report(client=client),
+                                pd.read_sql_table(f'{SOURCE}_campaigns', con=engine))
+        pbar()
+        df_campaign_stat = exclude_duplicates(get_campaign_stat(client=client, date_from=date_from, date_to=date_to),
+                                pd.read_sql_table(f'{SOURCE}_stat', con=engine))
+        pbar()                                
+        df_ad_performance_report = exclude_duplicates(get_ad_performance_report(client=client, date_from=date_from, date_to=date_to),
+                                pd.read_sql_table(f'{SOURCE}_ads', con=engine))
+        pbar()
 
-    df_campaign_performance_report = get_campaign_performance_report(client=client)
-    df_campaign_stat = exclude_duplicates(get_campaign_stat(client=client, date_from=date_from, date_to=date_to),
-                            pd.read_sql_table('google_adwords_stat', con=engine))
-    df_ad_performance_report = exclude_duplicates(get_ad_performance_report(client=client, date_from=date_from, date_to=date_to),
-                            pd.read_sql_table('google_adwords_ads', con=engine))
-
-    df_campaign_performance_report.to_sql('google_adwords_campaigns', engine, if_exists='append', index=False)
-    df_campaign_stat.to_sql('google_adwords_stat', engine, if_exists='append', index=False)
-    df_ad_performance_report.to_sql('google_adwords_ads', engine, if_exists='append', index=False)
+        df_campaign_performance_report.to_sql(f'{SOURCE}_campaigns', engine, if_exists='append', index=False)
+        pbar()
+        df_campaign_stat.to_sql(f'{SOURCE}_stat', engine, if_exists='append', index=False)
+        pbar()
+        df_ad_performance_report.to_sql(f'{SOURCE}_ads', engine, if_exists='append', index=False)
+        pbar()
 
 
 
@@ -104,13 +113,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-c', '--credentials', type=str, metavar='',
-                        help='Path to .yaml file that contains credentials.', required=True)
+                        help='Path to .yaml file that contains credentials.')
     parser.add_argument('-df', '--date_from', type=str, metavar='',
                         help='Date collect stat from.', required=True)
     parser.add_argument('-dt', '--date_to', type=str, metavar='', help='Date collect stats to. Default: yesterday date',
                         default=datetime.strftime(datetime.today()-timedelta(days=1), '%Y-%m-%d'))
 
-    parser.add_argument('-db', '--database', type=str, metavar='', required=True,
+    parser.add_argument('-db', '--database', type=str, metavar='',
                     help='path to JSON file with base config.\nSchema:' +
                     '\nhost - <string> base host.' +
                     '\nport - <string> base port.' +
@@ -120,17 +129,32 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # Get engine and check it connection
-    with open(args.database, 'r') as f:
-        database = json.loads(f.read())        
-    try:
-        engine = create_engine(f'postgresql+psycopg2://{database["user"]}:{database["password"]}@{database["host"]}:{database["port"]}/{database["base_name"]}')
-    except KeyError:
-        raise ValueError('databse config file is missing reqired arguments, use -h to show JSON schema')
-    with engine.connect() as connection:
-        pass
+    # Get credentials file
+    if args.credentials:
+        credentials = args.credentials
+    else:
+        if 'CREDENTIALS' in os.environ:
+            credentials = os.environ['CREDENTIALS']
+        else:
+            raise ValueError('--credentials was not specified')
 
-    client = AdWordsClient.LoadFromStorage(args.credentials)
+    # Get engine
+    if args.database:
+        with open(args.database, 'r') as f:
+            database = json.loads(f.read())        
+        try:
+            engine = create_engine(f'postgresql+psycopg2://{database["user"]}:{database["password"]}@{database["host"]}:{database["port"]}/{database["base_name"]}')
+        except KeyError:
+            raise ValueError('databse config file is missing reqired arguments, use -h to show JSON schema')
+    else:
+        try:
+            engine = get_pg_engine_from_env()
+        except KeyError:
+            raise ValueError('--database was not specified')
+    # Check engine connection
+    check_engine_connection(engine)
+
+    client = AdWordsClient.LoadFromStorage(credentials)
     client.int_client_customer_id = int(client.client_customer_id.replace('-', ''))
     
     main(client=client, date_from=date_validation(args.date_from),
